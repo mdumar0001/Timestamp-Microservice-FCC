@@ -1,59 +1,65 @@
-// server.js
 const express = require("express");
 const cors = require("cors");
+const morgan = require("morgan");
 
 const app = express();
 
-//  Middleware
-app.use(cors({ optionsSuccessStatus: 200 })); // to handle FCC legacy browser
-app.use(express.static("public"));
+//  Middlewares
+app.use(cors()); // cross-origin allowed
+app.use(morgan("dev")); // logging for requests
 app.use(express.json());
 
 //  Root route
 app.get("/", (req, res) => {
   res.send(`
     <h1>Timestamp Microservice</h1>
-    <p>Usage:</p>
+    <p>Use <code>/api/:date?</code> to get Unix and UTC time</p>
     <ul>
-      <li><code>/api/</code> → current timestamp</li>
-      <li><code>/api/:date</code> → pass date string or unix timestamp</li>
+      <li><a href="/api/">Current time</a></li>
+      <li><a href="/api/2015-12-25">Example: /api/2015-12-25</a></li>
+      <li><a href="/api/1451001600000">Example: /api/1451001600000</a></li>
     </ul>
   `);
 });
 
-// API route
+// API endpoint
 app.get("/api/:date?", (req, res) => {
-  let dateParam = req.params.date;
-
+  let dateInput = req.params.date;
   let date;
 
-  // Case 1: no param → current time
-  if (!dateParam) {
+  if (!dateInput) {
+    // Agar koi input nahi hai → current date
     date = new Date();
-  }
-  // Case 2: numeric unix timestamp
-  else if (/^\d+$/.test(dateParam)) {
-    date = new Date(parseInt(dateParam));
-  }
-  // Case 3: date string
-  else {
-    date = new Date(dateParam);
+  } else {
+    // Agar sirf number hai → unix timestamp
+    if (!isNaN(dateInput)) {
+      date = new Date(parseInt(dateInput));
+    } else {
+      date = new Date(dateInput);
+    }
   }
 
-  // Case 4: invalid date
+  // Agar date invalid hai
   if (date.toString() === "Invalid Date") {
     return res.json({ error: "Invalid Date" });
   }
 
-  //  Response object
-  res.json({
+  //  Extra features
+  const response = {
     unix: date.getTime(),
     utc: date.toUTCString(),
-  });
+    iso: date.toISOString(), // ISO 8601 format
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+    weekday: date.toLocaleDateString("en-US", { weekday: "long" }),
+  };
+
+  return res.json(response);
 });
 
-//  Server start
+//  Server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(` Server running on port ${PORT}`);
 });
